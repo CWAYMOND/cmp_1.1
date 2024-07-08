@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notes Transfer System for SKM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+            box-sizing: border-box;
+        }
+        h1 {
+            text-align: center;
+            font-weight: 600;
+            color: #333;
+            font-size: 2em;
+            margin-bottom: 30px;
+        }
+        #controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            font-family: 'Poppins', sans-serif;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #notes-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .note-item {
+            background-color: white;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            cursor: pointer;
+        }
+        .note-text {
+            flex-grow: 1;
+            margin-right: 15px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .complete-btn {
+            padding: 5px 10px;
+            font-size: 14px;
+            background-color: #008CBA;
+        }
+        .complete-btn:hover {
+            background-color: #007099;
+        }
+        .completed .note-text {
+            opacity: 0.6;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 10px;
+            position: relative;
+        }
+        #add-note-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            font-size: 24px;
+            line-height: 56px;
+            text-align: center;
+            padding: 0;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        #note-input, #edit-note-input {
+            width: 100%;
+            height: 150px;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        .toggle-bar {
+            display: flex;
+            background-color: #e0e0e0;
+            border-radius: 25px;
+            overflow: hidden;
+            width: 300px;
+        }
+        .toggle-option {
+            flex: 1;
+            padding: 10px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .toggle-option.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        #view-note-content {
+            white-space: pre-wrap;
+            margin-bottom: 20px;
+        }
+        .popup-buttons {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+        }
+        .popup-buttons button {
+            padding: 5px 10px;
+            font-size: 14px;
+            margin-left: 5px;
+        }
+        #user-select {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-family: 'Poppins', sans-serif;
+        }
+        #pull-to-refresh {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            h1 {
+                font-size: 2em;
+            }
+            #controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            #user-select, .toggle-bar {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            .note-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .note-text {
+                margin-right: 0;
+                margin-bottom: 10px;
+            }
+            .complete-btn {
+                align-self: flex-end;
+            }
+            .modal-content {
+                margin: 5% auto;
+                padding: 15px;
+                width: 95%;
+            }
+            .popup-buttons {
+                flex-wrap: wrap;
+            }
+            .popup-buttons button {
+                flex: 1 0 30%;
+                margin-bottom: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Notes Transfer System for SKM</h1>
+    <div id="controls">
+        <select id="user-select">
+            <option value="C-way">C-way</option>
+            <option value="Ciel">Ciel</option>
+            <option value="Claudia">Claudia</option>
+            <option value="TAs">TAs</option>
+        </select>
+        <div class="toggle-bar">
+            <div class="toggle-option active" id="incomplete-toggle">Incomplete</div>
+            <div class="toggle-option" id="completed-toggle">Completed</div>
+        </div>
+    </div>
+    <div id="pull-to-refresh">Pull to refresh</div>
+    <ul id="notes-list"></ul>
+    <button id="add-note-btn">+</button>
+
+    <div id="add-note-modal" class="modal">
+        <div class="modal-content">
+            <textarea id="note-input" placeholder="Enter your note"></textarea>
+            <button id="submit-note">Add</button>
+        </div>
+    </div>
+
+    <div id="view-note-modal" class="modal">
+        <div class="modal-content">
+            <div class="popup-buttons">
+                <button id="copy-note-btn">Copy</button>
+                <button id="edit-note-btn">Edit</button>
+                <button id="delete-note-btn">Delete</button>
+            </div>
+            <div id="view-note-content"></div>
+        </div>
+    </div>
+
+    <div id="edit-note-modal" class="modal">
+        <div class="modal-content">
+            <textarea id="edit-note-input"></textarea>
+            <button id="save-edit-btn">Save</button>
+        </div>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+          apiKey: "AIzaSyC687c1-DdFmyeQO4VFyMdr6KouOepXxyg",
+          authDomain: "smpforpt.firebaseapp.com",
+          databaseURL: "https://smpforpt-default-rtdb.asia-southeast1.firebasedatabase.app",
+          projectId: "smpforpt",
+          storageBucket: "smpforpt.appspot.com",
+          messagingSenderId: "137326016226",
+          appId: "1:137326016226:web:0aac0b01f1936fcd6810bb"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        const notesList = document.getElementById('notes-list');
+        const incompleteToggle = document.getElementById('incomplete-toggle');
+        const completedToggle = document.getElementById('completed-toggle');
+        const addNoteBtn = document.getElementById('add-note-btn');
+        const addNoteModal = document.getElementById('add-note-modal');
+        const viewNoteModal = document.getElementById('view-note-modal');
+        const editNoteModal = document.getElementById('edit-note-modal');
+        const noteInput = document.getElementById('note-input');
+        const submitNoteBtn = document.getElementById('submit-note');
+        const viewNoteContent = document.getElementById('view-note-content');
+        const editNoteBtn = document.getElementById('edit-note-btn');
+        const editNoteInput = document.getElementById('edit-note-input');
+        const saveEditBtn = document.getElementById('save-edit-btn');
+        const copyNoteBtn = document.getElementById('copy-note-btn');
+        const deleteNoteBtn = document.getElementById('delete-note-btn');
+        const userSelect = document.getElementById('user-select');
+
+        let currentUser = 'C-way';
+        let showCompleted = false;
+        let currentNoteId = null;
+        let lastScrollTop = 0;
+
+        function saveNote(note) {
+            return database.ref('notes/' + currentUser).push(note);
+        }
+
+        function updateNote(id, note) {
+            return database.ref('notes/' + currentUser + '/' + id).update(note);
+        }
+
+        function deleteNoteFromDB(id) {
+            return database.ref('notes/' + currentUser + '/' + id).remove();
+        }
+
+        function loadNotes() {
+            database.ref('notes/' + currentUser).once('value').then((snapshot) => {
+                const notes = snapshot.val();
+                if (!notes) {
+                    initializeDemoNotes().then(() => loadNotes());
+                } else {
+                    renderNotes(notes);
+                }
+            });
+        }
+
+        function setupRealtimeListener() {
+            database.ref('notes/' + currentUser).on('value', (snapshot) => {
+                const notes = snapshot.val();
+                if (notes) {
+                    renderNotes(notes);
+                }
+            });
+        }
+
+        function renderNotes(notes) {
+            notesList.innerHTML = '';
+            Object.entries(notes).forEach(([id, note]) => {
+                if ((!showCompleted && !note.complete) || (showCompleted && note.complete)) {
+                    const li = document.createElement('li');
+                    li.className = 'note-item' + (note.complete ? ' completed' : '');
+                    const firstLine = note.text.split('\n')[0];
+                    li.innerHTML = `
+                        <div class="note-text">${firstLine}</div>
+                        <button class="complete-btn" onclick="toggleComplete('${id}', event)">${note.complete ? 'Uncomplete' : 'Complete'}</button>
+                    `;
+                    li.addEventListener('click', () => viewNote(id));
+                    notesList.appendChild(li);
+                }
+            });
+        }
+
+        async function addNote() {
+            const noteText = noteInput.value.trim();
+            if (noteText) {
+                const newNote = { text: noteText, complete: false, user: currentUser };
+                await saveNote(newNote);
+                noteInput.value = '';
+                addNoteModal.style.display = "none";
+                loadNotes();
+            }
+        }
+
+        async function deleteNote() {
+            await deleteNoteFromDB(currentNoteId);
+            viewNoteModal.style.display = "none";
+            loadNotes();
+        }
+
+        async function toggleComplete(id, event) {
+            event.stopPropagation();
+            const noteRef = database.ref('notes/' + currentUser + '/' + id);
+            noteRef.once('value').then((snapshot) => {
+                const note = snapshot.val();
+                note.complete = !note.complete;
+                noteRef.update(note).then(() => {
+                    loadNotes();
+                });
+            });
+        }
+
+        function toggleFilter(completed) {
+            showCompleted = completed;
+            incompleteToggle.classList.toggle('active', !showCompleted);
+            completedToggle.classList.toggle('active', showCompleted);
+            loadNotes();
+        }
+
+        async function viewNote(id) {
+            currentNoteId = id;
+            const noteRef = database.ref('notes/' + currentUser + '/' + id);
+            noteRef.once('value').then((snapshot) => {
+                const note = snapshot.val();
+                viewNoteContent.textContent = note.text;
+                viewNoteModal.style.display = "block";
+            });
+        }
+
+        async function editNote() {
+            const noteRef = database.ref('notes/' + currentUser + '/' + currentNoteId);
+            noteRef.once('value').then((snapshot) => {
+                const note = snapshot.val();
+                editNoteInput.value = note.text;
+                viewNoteModal.style.display = "none";
+                editNoteModal.style.display = "block";
+            });
+        }
+
+        async function saveEdit() {
+            const editedText = editNoteInput.value.trim();
+            if (editedText) {
+                const noteRef = database.ref('notes/' + currentUser + '/' + currentNoteId);
+                noteRef.once('value').then((snapshot) => {
+                    const note = snapshot.val();
+                    note.text = editedText;
+                    noteRef.update(note).then(() => {
+                        editNoteModal.style.display = "none";
+                        loadNotes();
+                    });
+                });
+            }
+        }
+
+        function copyNote() {
+            navigator.clipboard.writeText(viewNoteContent.textContent)
+                .then(() => {
+                    const copyBtn = document.getElementById('copy-note-btn');
+                    copyBtn.textContent = 'Copied!';
+                    copyBtn.style.backgroundColor = '#45a049';
+                    setTimeout(() => {
+                        copyBtn.textContent = 'Copy';
+                        copyBtn.style.backgroundColor = '';
+                    }, 2000);
+                })
+                .catch(err => console.error('Failed to copy note: ',.catch(err => console.error('Failed to copy note: ', err));
+        }
+
+        function changeUser() {
+            currentUser = userSelect.value;
+            loadNotes();
+            setupRealtimeListener();
+        }
+
+        function initializeDemoNotes() {
+            const demoNotes = {
+                'C-way': [
+                    { text: "Complete project proposal\n- Outline objectives\n- Define timeline\n- Estimate budget", complete: false },
+                    { text: "Grocery shopping\n- Milk\n- Eggs\n- Bread\n- Fruits and vegetables", complete: true },
+                    { text: "Plan weekend trip\n1. Choose destination\n2. Book accommodations\n3. Plan activities\n4. Pack essentials", complete: false },
+                    { text: "Learn new programming language\n- Complete online course\n- Practice with small projects\n- Join coding community", complete: false },
+                    { text: "Fitness goals for the month\n- Run 5k three times a week\n- Attend yoga class every Saturday\n- Meal prep on Sundays", complete: true },
+                    { text: "Home improvement tasks\n- Paint living room\n- Fix leaky faucet\n- Organize garage", complete: false },
+                    { text: "Read 'The Great Gatsby' by F. Scott Fitzgerald", complete: false }
+                ],
+                'Ciel': [
+                    { text: "Study for exam\n- Review chapters 1-5\n- Complete practice problems\n- Make flashcards", complete: false },
+                    { text: "Clean the apartment\n- Vacuum and mop floors\n- Do laundry\n- Clean bathroom", complete: true },
+                ],
+                'Claudia': [
+                    { text: "Prepare presentation for work\n1. Gather data\n2. Create slides\n3. Practice delivery", complete: false },
+                    { text: "Schedule dentist appointment", complete: true },
+                ],
+                'TAs': [
+                    { text: "Review student submissions\n- Check for completeness\n- Provide feedback\n- Grade assignments", complete: false },
+                    { text: "Prepare for office hours\n- Review course material\n- Set up online meeting room", complete: true },
+                ]
+            };
+
+            const promises = [];
+
+            for (const [user, notes] of Object.entries(demoNotes)) {
+                notes.forEach(note => {
+                    promises.push(database.ref('notes/' + user).push(note));
+                });
+            }
+
+            return Promise.all(promises);
+        }
+
+        // Pull-to-refresh functionality
+        window.addEventListener('scroll', function() {
+            var st = window.pageYOffset || document.documentElement.scrollTop;
+            if (st < lastScrollTop) {
+                // Scrolling up
+                if (st === 0) {
+                    document.getElementById('pull-to-refresh').style.display = 'block';
+                    loadNotes();
+                }
+            } else {
+                // Scrolling down
+                document.getElementById('pull-to-refresh').style.display = 'none';
+            }
+            lastScrollTop = st <= 0 ? 0 : st;
+        }, false);
+
+        addNoteBtn.onclick = () => addNoteModal.style.display = "block";
+        editNoteBtn.onclick = editNote;
+        saveEditBtn.onclick = saveEdit;
+        copyNoteBtn.onclick = copyNote;
+        deleteNoteBtn.onclick = deleteNote;
+        userSelect.onchange = changeUser;
+
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = "none";
+            }
+        }
+
+        submitNoteBtn.addEventListener('click', addNote);
+        incompleteToggle.addEventListener('click', () => toggleFilter(false));
+        completedToggle.addEventListener('click', () => toggleFilter(true));
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', (event) => {
+            loadNotes();
+            setupRealtimeListener();
+        });
+    </script>
+</body>
+</html>
