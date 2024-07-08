@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notes Transfer System for SKM</title>
+    <title>SKM Notes Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -20,7 +20,7 @@
             text-align: center;
             font-weight: 600;
             color: #333;
-            font-size: 2em;
+            font-size: 2.5em;
             margin-bottom: 30px;
         }
         #controls {
@@ -112,11 +112,10 @@
         }
         #note-input, #edit-note-input {
             width: 100%;
-            height: 150px;
+            height: 100px;
             padding: 10px;
             margin-bottom: 10px;
             font-family: 'Poppins', sans-serif;
-            font-size: 16px;
             border: 1px solid #ddd;
             border-radius: 5px;
             resize: vertical;
@@ -161,11 +160,6 @@
             border: 1px solid #ddd;
             font-family: 'Poppins', sans-serif;
         }
-        #pull-to-refresh {
-            text-align: center;
-            padding: 20px;
-            display: none;
-        }
         @media (max-width: 600px) {
             body {
                 padding: 10px;
@@ -208,7 +202,7 @@
     </style>
 </head>
 <body>
-    <h1>Notes Transfer System for SKM</h1>
+    <h1>SKM Notes Dashboard</h1>
     <div id="controls">
         <select id="user-select">
             <option value="C-way">C-way</option>
@@ -221,7 +215,6 @@
             <div class="toggle-option" id="completed-toggle">Completed</div>
         </div>
     </div>
-    <div id="pull-to-refresh">Pull to refresh</div>
     <ul id="notes-list"></ul>
     <button id="add-note-btn">+</button>
 
@@ -286,7 +279,6 @@
         let currentUser = 'C-way';
         let showCompleted = false;
         let currentNoteId = null;
-        let lastScrollTop = 0;
 
         function saveNote(note) {
             return database.ref('notes/' + currentUser).push(note);
@@ -306,15 +298,6 @@
                 if (!notes) {
                     initializeDemoNotes().then(() => loadNotes());
                 } else {
-                    renderNotes(notes);
-                }
-            });
-        }
-
-        function setupRealtimeListener() {
-            database.ref('notes/' + currentUser).on('value', (snapshot) => {
-                const notes = snapshot.val();
-                if (notes) {
                     renderNotes(notes);
                 }
             });
@@ -419,13 +402,12 @@
                         copyBtn.style.backgroundColor = '';
                     }, 2000);
                 })
-                .catch(err => console.error('Failed to copy note: ',.catch(err => console.error('Failed to copy note: ', err));
+                .catch(err => console.error('Failed to copy note: ', err));
         }
 
         function changeUser() {
             currentUser = userSelect.value;
             loadNotes();
-            setupRealtimeListener();
         }
 
         function initializeDemoNotes() {
@@ -433,7 +415,7 @@
                 'C-way': [
                     { text: "Complete project proposal\n- Outline objectives\n- Define timeline\n- Estimate budget", complete: false },
                     { text: "Grocery shopping\n- Milk\n- Eggs\n- Bread\n- Fruits and vegetables", complete: true },
-                    { text: "Plan weekend trip\n1. Choose destination\n2. Book accommodations\n3. Plan activities\n4. Pack essentials", complete: false },
+                    { text{ text: "Plan weekend trip\n1. Choose destination\n2. Book accommodations\n3. Plan activities\n4. Pack essentials", complete: false },
                     { text: "Learn new programming language\n- Complete online course\n- Practice with small projects\n- Join coding community", complete: false },
                     { text: "Fitness goals for the month\n- Run 5k three times a week\n- Attend yoga class every Saturday\n- Meal prep on Sundays", complete: true },
                     { text: "Home improvement tasks\n- Paint living room\n- Fix leaky faucet\n- Organize garage", complete: false },
@@ -448,8 +430,8 @@
                     { text: "Schedule dentist appointment", complete: true },
                 ],
                 'TAs': [
-                    { text: "Review student submissions\n- Check for completeness\n- Provide feedback\n- Grade assignments", complete: false },
-                    { text: "Prepare for office hours\n- Review course material\n- Set up online meeting room", complete: true },
+                    { text: "Grade assignments\n- Review submission guidelines\n- Provide constructive feedback\n- Update grading sheet", complete: false },
+                    { text: "Prepare for lab session\n- Review experiment procedure\n- Set up equipment\n- Prepare safety briefing", complete: true },
                 ]
             };
 
@@ -463,22 +445,6 @@
 
             return Promise.all(promises);
         }
-
-        // Pull-to-refresh functionality
-        window.addEventListener('scroll', function() {
-            var st = window.pageYOffset || document.documentElement.scrollTop;
-            if (st < lastScrollTop) {
-                // Scrolling up
-                if (st === 0) {
-                    document.getElementById('pull-to-refresh').style.display = 'block';
-                    loadNotes();
-                }
-            } else {
-                // Scrolling down
-                document.getElementById('pull-to-refresh').style.display = 'none';
-            }
-            lastScrollTop = st <= 0 ? 0 : st;
-        }, false);
 
         addNoteBtn.onclick = () => addNoteModal.style.display = "block";
         editNoteBtn.onclick = editNote;
@@ -500,7 +466,6 @@
         // Initialize the app
         document.addEventListener('DOMContentLoaded', (event) => {
             loadNotes();
-            setupRealtimeListener();
         });
     </script>
 </body>
